@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "509048963365",
+    "project_id": "qlma-b7d83",
+    "storage_bucket": "qlma-b7d83.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:509048963365:android:59771d38e23e78a6dcdacc",
+        "android_client_info": {
+          "package_name": "com.example.qlma"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAMcV62BUU_ZfoQMja1mZljnDrnOUovFOc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:509048963365:android:e771fef7c524f297dcdacc",
+        "android_client_info": {
+          "package_name": "com.example.qloder"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAMcV62BUU_ZfoQMja1mZljnDrnOUovFOc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
