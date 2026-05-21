@@ -87,14 +87,14 @@ class _LoginForm extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Dang nhap',
+                  'Đăng nhập',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w900,
                   ),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Su dung tai khoan admin hoac nhan vien',
+                  'Sử dụng tài khoản admin hoặc nhân viên',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 24),
@@ -114,12 +114,12 @@ class _LoginForm extends StatelessWidget {
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => _submit(context),
                   decoration: InputDecoration(
-                    labelText: 'Mat khau',
+                    labelText: 'Mật khẩu',
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       tooltip: controller.obscurePassword
-                          ? 'Hien mat khau'
-                          : 'An mat khau',
+                          ? 'Hiện mật khẩu'
+                          : 'Ẩn mật khẩu',
                       onPressed: controller.togglePasswordVisibility,
                       icon: Icon(
                         controller.obscurePassword
@@ -144,7 +144,7 @@ class _LoginForm extends StatelessWidget {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.login),
-                  label: const Text('Dang nhap'),
+                  label: const Text('Đăng nhập'),
                 ),
                 const SizedBox(height: 18),
                 const _SampleAccounts(),
@@ -198,7 +198,7 @@ class _BrandPanel extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Quan ly order mon an theo ban cho nha hang',
+            'Quản lý order món ăn theo bàn cho nhà hàng',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: colorScheme.onPrimaryContainer,
               fontWeight: FontWeight.w700,
@@ -209,13 +209,13 @@ class _BrandPanel extends StatelessWidget {
             spacing: 10,
             runSpacing: 10,
             children: [
-              _FeatureChip(icon: Icons.table_bar, label: 'Ban an'),
-              _FeatureChip(icon: Icons.receipt_long, label: 'Hoa don'),
+              _FeatureChip(icon: Icons.table_bar, label: 'Bàn ăn'),
+              _FeatureChip(icon: Icons.receipt_long, label: 'Hóa đơn'),
               _FeatureChip(
                 icon: Icons.people_alt_outlined,
-                label: 'Thanh vien',
+                label: 'Thành viên',
               ),
-              _FeatureChip(icon: Icons.bar_chart, label: 'Thong ke'),
+              _FeatureChip(icon: Icons.bar_chart, label: 'Thống kê'),
             ],
           ),
         ],
@@ -250,7 +250,7 @@ class _MobileHeader extends StatelessWidget {
           ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900),
         ),
         const SizedBox(height: 6),
-        const Text('Quan ly order mon an theo ban'),
+        const Text('Quản lý order món ăn theo bàn'),
       ],
     );
   }
@@ -297,7 +297,7 @@ class _SampleAccounts extends StatelessWidget {
       child: const Padding(
         padding: EdgeInsets.all(12),
         child: Text(
-          'Tai khoan mau:\nadmin@gmail.com / 123456\nstaff@gmail.com / 123456',
+          'Tài khoản mẫu:\nadmin@gmail.com / 123456\nstaff@gmail.com / 123456',
         ),
       ),
     );

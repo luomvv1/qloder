@@ -78,7 +78,7 @@ class _AuthErrorView extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Khong doc duoc thong tin tai khoan',
+                'Không đọc được thông tin tài khoản',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
@@ -91,7 +91,7 @@ class _AuthErrorView extends StatelessWidget {
               FilledButton.icon(
                 onPressed: () => AuthService().signOut(),
                 icon: const Icon(Icons.logout),
-                label: const Text('Dang xuat'),
+                label: const Text('Đăng xuất'),
               ),
             ],
           ),

@@ -25,12 +25,12 @@ class AuthService {
     final profile = await currentUserProfile();
     if (profile == null) {
       await signOut();
-      throw Exception('Tai khoan chua co thong tin trong collection users.');
+      throw Exception('Tài khoản chưa có thông tin trong collection users.');
     }
 
     if (!profile.isActive) {
       await signOut();
-      throw Exception('Tai khoan da bi khoa hoac ngung hoat dong.');
+      throw Exception('Tài khoản đã bị khóa hoặc ngừng hoạt động.');
     }
 
     return profile;
@@ -43,6 +43,11 @@ class AuthService {
     final email = user.email?.trim().toLowerCase();
 
     try {
+      if (email != null && email.isNotEmpty) {
+        final emailProfile = await _profileByEmail(email);
+        if (emailProfile != null) return emailProfile;
+      }
+
       final uidDoc = await _firestore.collection('users').doc(user.uid).get();
       if (uidDoc.exists && uidDoc.data() != null) {
         final profile = AppUser.fromFirestore(uidDoc.id, uidDoc.data()!);
@@ -53,20 +58,6 @@ class AuthService {
 
       if (email == null || email.isEmpty) return null;
 
-      final emailQuery = await _firestore
-          .collection('users')
-          .where('email', isEqualTo: email)
-          .get();
-
-      if (emailQuery.docs.isNotEmpty) {
-        for (final doc in emailQuery.docs) {
-          final profile = AppUser.fromFirestore(doc.id, doc.data());
-          if (_isUsableProfile(profile, email)) {
-            return profile;
-          }
-        }
-      }
-
       return _sampleProfileFromEmail(user.uid, email);
     } on FirebaseException {
       if (email == null || email.isEmpty) return null;
@@ -76,6 +67,27 @@ class AuthService {
   }
 
   Future<void> signOut() => _auth.signOut();
+
+  Future<AppUser?> _profileByEmail(String email) async {
+    final emailQuery = await _firestore
+        .collection('users')
+        .where('email', isEqualTo: email)
+        .get();
+
+    AppUser? fallbackProfile;
+    for (final doc in emailQuery.docs) {
+      final profile = AppUser.fromFirestore(doc.id, doc.data());
+      if (!_isUsableProfile(profile, email)) continue;
+
+      if (RegExp(r'^user\d+$').hasMatch(profile.id)) {
+        return profile;
+      }
+
+      fallbackProfile ??= profile;
+    }
+
+    return fallbackProfile;
+  }
 
   bool _isUsableProfile(AppUser profile, String? email) {
     final hasValidRole = profile.isAdmin || profile.isStaff;
@@ -90,16 +102,16 @@ class AuthService {
   AppUser? _sampleProfileFromEmail(String uid, String email) {
     return switch (email) {
       'admin@gmail.com' => AppUser(
-        id: uid,
-        fullName: 'Quan tri vien',
+        id: 'user01',
+        fullName: 'Quản trị viên',
         email: email,
         phone: '0909000000',
         role: 'admin',
         isActive: true,
       ),
       'staff@gmail.com' => AppUser(
-        id: uid,
-        fullName: 'Tran Thi Nhan',
+        id: 'user02',
+        fullName: 'Trần Thị Nhân',
         email: email,
         phone: '0912345678',
         role: 'staff',

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../controllers/theme_controller.dart';
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
+import '../invoices/invoice_list_view.dart';
+import '../staff/staff_tables_view.dart';
 
 class HomeView extends StatelessWidget {
   const HomeView({super.key, required this.user});
@@ -13,9 +16,14 @@ class HomeView extends StatelessWidget {
     if (user.isAdmin) {
       return AdminDashboardView(user: user);
     }
-
     return StaffWorkspaceView(user: user);
   }
+}
+
+void _openInvoices(BuildContext context) {
+  Navigator.of(
+    context,
+  ).push(MaterialPageRoute(builder: (_) => const InvoiceListView()));
 }
 
 class AdminDashboardView extends StatelessWidget {
@@ -25,14 +33,18 @@ class AdminDashboardView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Quan ly nha hang'),
+        title: const Text('Quản lý nhà hàng'),
         actions: [
+          _ThemeToggleButton(),
           IconButton(
-            tooltip: 'Dang xuat',
+            tooltip: 'Thông tin cá nhân',
+            onPressed: () => _showProfileDialog(context, user),
+            icon: const Icon(Icons.account_circle_outlined),
+          ),
+          IconButton(
+            tooltip: 'Đăng xuất',
             onPressed: () => AuthService().signOut(),
             icon: const Icon(Icons.logout),
           ),
@@ -42,11 +54,9 @@ class AdminDashboardView extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           _WelcomePanel(
-            title: 'Xin chao, ${user.fullName}',
-            subtitle: 'Dashboard quan ly he thong order theo ban',
+            title: 'Xin chào, ${user.fullName}',
+            subtitle: 'Theo dõi nhanh hoạt động order theo bàn',
             icon: Icons.admin_panel_settings_outlined,
-            backgroundColor: colorScheme.primaryContainer,
-            foregroundColor: colorScheme.onPrimaryContainer,
           ),
           const SizedBox(height: 16),
           FilledButton.icon(
@@ -58,91 +68,48 @@ class AdminDashboardView extends StatelessWidget {
                 ),
               );
             },
-            icon: const Icon(Icons.storefront),
-            label: const Text('Vao giao dien nhan vien'),
+            icon: const Icon(Icons.storefront_outlined),
+            label: const Text('Mở giao diện nhân viên'),
           ),
           const SizedBox(height: 20),
-          const _SectionTitle('Tong quan nhanh'),
-          const SizedBox(height: 12),
-          const _MetricGrid(
-            metrics: [
-              _MetricData(
-                title: 'Ban dang phuc vu',
-                value: '1',
-                icon: Icons.table_restaurant,
-                color: Color(0xFF0F766E),
-              ),
-              _MetricData(
-                title: 'Hoa don hom nay',
-                value: '1',
-                icon: Icons.receipt_long,
-                color: Color(0xFFB45309),
-              ),
-              _MetricData(
-                title: 'Mon dang ban',
-                value: '3',
-                icon: Icons.restaurant,
-                color: Color(0xFF7C3AED),
-              ),
-              _MetricData(
-                title: 'Thanh vien',
-                value: '2',
-                icon: Icons.people_alt_outlined,
-                color: Color(0xFF2563EB),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          const _SectionTitle('Quan ly du lieu'),
+          const _SectionTitle('Khu vực quản lý'),
           const SizedBox(height: 12),
           _ActionGrid(
             actions: [
               _ActionData(
                 icon: Icons.restaurant_menu,
-                title: 'Mon an',
-                subtitle: 'Them, sua, an/hien mon',
+                title: 'Món ăn',
+                subtitle: 'Thêm, sửa, trạng thái món',
                 onTap: () {},
               ),
               _ActionData(
                 icon: Icons.category_outlined,
-                title: 'Danh muc',
-                subtitle: 'Mon chinh, nuoc uong, lau',
-                onTap: () {},
-              ),
-              _ActionData(
-                icon: Icons.tune,
-                title: 'Bien the',
-                subtitle: 'Size, gia va don vi tinh',
+                title: 'Danh mục',
+                subtitle: 'Món chính, nước uống, lẩu',
                 onTap: () {},
               ),
               _ActionData(
                 icon: Icons.table_bar,
-                title: 'Ban an',
-                subtitle: 'Trang thai va order hien tai',
+                title: 'Bàn ăn',
+                subtitle: 'Sơ đồ và trạng thái bàn',
                 onTap: () {},
               ),
               _ActionData(
                 icon: Icons.badge_outlined,
-                title: 'Nhan vien',
-                subtitle: 'Tai khoan va phan quyen',
-                onTap: () {},
-              ),
-              _ActionData(
-                icon: Icons.person_search,
-                title: 'Khach hang',
-                subtitle: 'Thanh vien va diem tich luy',
+                title: 'Nhân viên',
+                subtitle: 'Tài khoản và phân quyền',
                 onTap: () {},
               ),
               _ActionData(
                 icon: Icons.payments_outlined,
-                title: 'Hoa don',
-                subtitle: 'Tra cuu va xem chi tiet',
-                onTap: () {},
+                title: 'Hóa đơn',
+                subtitle: 'Tra cứu hóa đơn đã thanh toán',
+                onTap: () => _openInvoices(context),
               ),
               _ActionData(
                 icon: Icons.bar_chart,
-                title: 'Thong ke',
-                subtitle: 'Doanh thu va mon ban chay',
+                title: 'Thống kê',
+                subtitle: 'Doanh thu và món bán chạy',
                 onTap: () {},
               ),
             ],
@@ -165,16 +132,20 @@ class StaffWorkspaceView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Scaffold(
       appBar: AppBar(
         leading: showBackButton ? const BackButton() : null,
-        title: const Text('Phuc vu'),
+        title: const Text('Nhân viên phục vụ'),
         actions: [
+          _ThemeToggleButton(),
+          IconButton(
+            tooltip: 'Thông tin cá nhân',
+            onPressed: () => _showProfileDialog(context, user),
+            icon: const Icon(Icons.account_circle_outlined),
+          ),
           if (!showBackButton)
             IconButton(
-              tooltip: 'Dang xuat',
+              tooltip: 'Đăng xuất',
               onPressed: () => AuthService().signOut(),
               icon: const Icon(Icons.logout),
             ),
@@ -184,92 +155,169 @@ class StaffWorkspaceView extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           _WelcomePanel(
-            title: 'Ca lam cua ${user.fullName}',
-            subtitle: 'Chon ban, tao order va thanh toan cho khach',
-            icon: Icons.storefront,
-            backgroundColor: const Color(0xFFFFF7ED),
-            foregroundColor: const Color(0xFF9A3412),
+            title: 'Xin chào, ${user.fullName}',
+            subtitle: 'Quản lý order theo bàn trong ca làm',
+            icon: Icons.room_service_outlined,
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: () => _openStaffTables(context),
+            icon: const Icon(Icons.table_restaurant),
+            label: const Text('Mở sơ đồ bàn'),
           ),
           const SizedBox(height: 20),
-          const _SectionTitle('Trang thai ban'),
-          const SizedBox(height: 12),
-          _TableStatusGrid(
-            tables: [
-              _TableData(
-                name: 'Ban 01',
-                status: 'Dang phuc vu',
-                color: colorScheme.primary,
-                icon: Icons.room_service_outlined,
-              ),
-              const _TableData(
-                name: 'Ban 02',
-                status: 'Trong',
-                color: Color(0xFF16A34A),
-                icon: Icons.check_circle_outline,
-              ),
-              const _TableData(
-                name: 'Ban 03',
-                status: 'Da dat',
-                color: Color(0xFFB45309),
-                icon: Icons.event_available_outlined,
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          const _SectionTitle('Thao tac nhanh'),
+          const _SectionTitle('Chức năng phục vụ hiện có'),
           const SizedBox(height: 12),
           _ActionGrid(
             actions: [
               _ActionData(
                 icon: Icons.add_shopping_cart,
-                title: 'Tao order',
-                subtitle: 'Chon ban va them mon',
-                onTap: () {},
+                title: 'Tạo order',
+                subtitle: 'Chọn bàn, mở order mới',
+                onTap: () =>
+                    _openStaffTables(context, StaffTableMode.createOrder),
               ),
               _ActionData(
                 icon: Icons.playlist_add,
-                title: 'Them mon',
-                subtitle: 'Them mon vao order dang mo',
-                onTap: () {},
+                title: 'Thêm món',
+                subtitle: 'Chọn món, size, số lượng',
+                onTap: () => _openStaffTables(context, StaffTableMode.addFood),
+              ),
+              _ActionData(
+                icon: Icons.check_circle_outline,
+                title: 'Xác nhận món',
+                subtitle: 'Khóa món đã gửi bếp',
+                onTap: () =>
+                    _openStaffTables(context, StaffTableMode.confirmFood),
               ),
               _ActionData(
                 icon: Icons.swap_horiz,
-                title: 'Chuyen ban',
-                subtitle: 'Doi ban cho order hien tai',
-                onTap: () {},
+                title: 'Chuyển bàn',
+                subtitle: 'Chuyển order sang bàn khác',
+                onTap: () => _openStaffTables(context, StaffTableMode.transfer),
               ),
               _ActionData(
                 icon: Icons.call_merge,
-                title: 'Gop ban',
-                subtitle: 'Gop order cua nhieu ban',
-                onTap: () {},
-              ),
-              _ActionData(
-                icon: Icons.person_search,
-                title: 'Tim thanh vien',
-                subtitle: 'Tra cuu bang so dien thoai',
-                onTap: () {},
-              ),
-              _ActionData(
-                icon: Icons.person_add_alt,
-                title: 'Them thanh vien',
-                subtitle: 'Tao khach moi khi thanh toan',
-                onTap: () {},
+                title: 'Gộp bàn',
+                subtitle: 'Nhiều bàn dùng chung một order',
+                onTap: () => _openStaffTables(context, StaffTableMode.merge),
               ),
               _ActionData(
                 icon: Icons.payments_outlined,
-                title: 'Thanh toan',
-                subtitle: 'Giam gia, diem va hoa don',
-                onTap: () {},
+                title: 'Thanh toán',
+                subtitle: 'Giảm giá, điểm, xuất hóa đơn',
+                onTap: () => _openStaffTables(context, StaffTableMode.payment),
+              ),
+              _ActionData(
+                icon: Icons.person_search_outlined,
+                title: 'Thành viên',
+                subtitle: 'Tìm hoặc thêm nhanh theo SĐT',
+                onTap: () => _openStaffTables(context, StaffTableMode.payment),
               ),
               _ActionData(
                 icon: Icons.receipt_long,
-                title: 'Hoa don gan day',
-                subtitle: 'Xem cac bill vua thanh toan',
-                onTap: () {},
+                title: 'Order hiện tại',
+                subtitle: 'Xem chi tiết món theo bàn',
+                onTap: () =>
+                    _openStaffTables(context, StaffTableMode.currentOrders),
+              ),
+              _ActionData(
+                icon: Icons.manage_search,
+                title: 'Hóa đơn',
+                subtitle: 'Xem hóa đơn đã thanh toán',
+                onTap: () => _openInvoices(context),
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  void _openStaffTables(
+    BuildContext context, [
+    StaffTableMode mode = StaffTableMode.normal,
+  ]) {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => StaffTablesView(mode: mode)));
+  }
+
+}
+
+class _ThemeToggleButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: ThemeController.instance,
+      builder: (context, _) {
+        final isDark = ThemeController.instance.isDarkMode;
+        return IconButton(
+          tooltip: isDark
+              ? 'Đổi sang giao diện sáng'
+              : 'Đổi sang giao diện tối',
+          onPressed: ThemeController.instance.toggleTheme,
+          icon: Icon(
+            isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+          ),
+        );
+      },
+    );
+  }
+}
+
+Future<void> _showProfileDialog(BuildContext context, AppUser user) {
+  return showDialog<void>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: const Text('Thông tin cá nhân'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _ProfileRow(label: 'Họ tên', value: user.fullName),
+            _ProfileRow(label: 'Email', value: user.email),
+            _ProfileRow(label: 'Số điện thoại', value: user.phone),
+            _ProfileRow(
+              label: 'Vai trò',
+              value: user.isAdmin ? 'Quản lý' : 'Nhân viên',
+            ),
+            _ProfileRow(label: 'Mã tài khoản', value: user.id),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Đóng'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+class _ProfileRow extends StatelessWidget {
+  const _ProfileRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          Expanded(child: Text(value.isEmpty ? '-' : value)),
         ],
       ),
     );
@@ -281,50 +329,42 @@ class _WelcomePanel extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.icon,
-    required this.backgroundColor,
-    required this.foregroundColor,
   });
 
   final String title;
   final String subtitle;
   final IconData icon;
-  final Color backgroundColor;
-  final Color foregroundColor;
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
           CircleAvatar(
-            radius: 28,
-            backgroundColor: foregroundColor.withValues(alpha: 0.12),
-            child: Icon(icon, color: foregroundColor, size: 30),
+            radius: 24,
+            backgroundColor: colorScheme.primary,
+            child: Icon(icon, color: colorScheme.onPrimary, size: 24),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: foregroundColor,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: foregroundColor.withValues(alpha: 0.78),
-                  ),
-                ),
+                Text(subtitle),
               ],
             ),
           ),
@@ -345,60 +385,7 @@ class _SectionTitle extends StatelessWidget {
       title,
       style: Theme.of(
         context,
-      ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-    );
-  }
-}
-
-class _MetricGrid extends StatelessWidget {
-  const _MetricGrid({required this.metrics});
-
-  final List<_MetricData> metrics;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 720 ? 4 : 2;
-
-        return GridView.builder(
-          itemCount: metrics.length,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            mainAxisExtent: 112,
-          ),
-          itemBuilder: (context, index) {
-            final metric = metrics[index];
-
-            return Card(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(metric.icon, color: metric.color),
-                    const Spacer(),
-                    Text(
-                      metric.value,
-                      style: Theme.of(context).textTheme.headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.w900),
-                    ),
-                    Text(
-                      metric.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
+      ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
     );
   }
 }
@@ -426,11 +413,10 @@ class _ActionGrid extends StatelessWidget {
             crossAxisCount: columns,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            mainAxisExtent: 148,
+            mainAxisExtent: 150,
           ),
           itemBuilder: (context, index) {
             final action = actions[index];
-
             return Card(
               child: InkWell(
                 borderRadius: BorderRadius.circular(8),
@@ -441,13 +427,14 @@ class _ActionGrid extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Icon(action.icon),
-                      const Spacer(),
+                      const SizedBox(height: 12),
                       Text(
                         action.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w800),
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -468,63 +455,6 @@ class _ActionGrid extends StatelessWidget {
   }
 }
 
-class _TableStatusGrid extends StatelessWidget {
-  const _TableStatusGrid({required this.tables});
-
-  final List<_TableData> tables;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 700 ? 3 : 1;
-
-        return GridView.builder(
-          itemCount: tables.length,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            mainAxisExtent: 96,
-          ),
-          itemBuilder: (context, index) {
-            final table = tables[index];
-
-            return Card(
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: table.color.withValues(alpha: 0.12),
-                  child: Icon(table.icon, color: table.color),
-                ),
-                title: Text(table.name),
-                subtitle: Text(table.status),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {},
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-}
-
-class _MetricData {
-  const _MetricData({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color color;
-}
-
 class _ActionData {
   const _ActionData({
     required this.icon,
@@ -537,18 +467,4 @@ class _ActionData {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
-}
-
-class _TableData {
-  const _TableData({
-    required this.name,
-    required this.status,
-    required this.color,
-    required this.icon,
-  });
-
-  final String name;
-  final String status;
-  final Color color;
-  final IconData icon;
 }

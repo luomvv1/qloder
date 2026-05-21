@@ -45,12 +45,12 @@ class LoginController extends ChangeNotifier {
 
   String _messageFromAuthError(String code) {
     return switch (code) {
-      'invalid-email' => 'Email khong hop le.',
-      'user-disabled' => 'Tai khoan da bi khoa.',
-      'user-not-found' => 'Khong tim thay tai khoan.',
-      'wrong-password' => 'Mat khau khong dung.',
-      'invalid-credential' => 'Email hoac mat khau khong dung.',
-      _ => 'Dang nhap that bai. Vui long thu lai.',
+      'invalid-email' => 'Email không hợp lệ.',
+      'user-disabled' => 'Tài khoản đã bị khóa.',
+      'user-not-found' => 'Không tìm thấy tài khoản.',
+      'wrong-password' => 'Mật khẩu không đúng.',
+      'invalid-credential' => 'Email hoặc mật khẩu không đúng.',
+      _ => 'Đăng nhập thất bại. Vui lòng thử lại.',
     };
   }
 

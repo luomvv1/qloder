@@ -27,7 +27,7 @@ class _SeedAppState extends State<SeedApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        appBar: AppBar(title: const Text('Seed Firebase')),
+        appBar: AppBar(title: const Text('Tạo dữ liệu mẫu Firebase')),
         body: Center(
           child: FutureBuilder<void>(
             future: _seedFuture,
@@ -38,7 +38,7 @@ class _SeedAppState extends State<SeedApp> {
                   children: [
                     CircularProgressIndicator(),
                     SizedBox(height: 16),
-                    Text('Dang tao du lieu mau...'),
+                    Text('Đang tạo dữ liệu mẫu...'),
                   ],
                 );
               }
@@ -47,13 +47,13 @@ class _SeedAppState extends State<SeedApp> {
                 return Padding(
                   padding: const EdgeInsets.all(24),
                   child: Text(
-                    'Loi khi tao du lieu mau:\n${snapshot.error}',
+                    'Lỗi khi tạo dữ liệu mẫu:\n${snapshot.error}',
                     textAlign: TextAlign.center,
                   ),
                 );
               }
 
-              return const Text('Da tao du lieu mau Firebase thanh cong.');
+              return const Text('Đã tạo dữ liệu mẫu Firebase thành công.');
             },
           ),
         ),
@@ -74,14 +74,15 @@ Future<void> seedSampleData() async {
   }
 
   setDoc('settings', 'setting01', {
-    'restaurantName': 'Nha hang QLMA',
+    'restaurantName': 'Nhà hàng QLMA',
     'pointRate': 10000,
     'pointValue': 1000,
+    'orderCurrentNumber': 2,
     'invoiceCurrentNumber': 2,
   });
 
   setDoc('users', 'user01', {
-    'fullName': 'Quan tri vien',
+    'fullName': 'Quản trị viên',
     'email': 'admin@gmail.com',
     'phone': '0909000000',
     'role': 'admin',
@@ -90,7 +91,7 @@ Future<void> seedSampleData() async {
   });
 
   setDoc('users', 'user02', {
-    'fullName': 'Tran Thi Nhan',
+    'fullName': 'Trần Thị Nhân',
     'email': 'staff@gmail.com',
     'phone': '0912345678',
     'role': 'staff',
@@ -99,49 +100,49 @@ Future<void> seedSampleData() async {
   });
 
   setDoc('customers', 'customer01', {
-    'fullName': 'Nguyen Van An',
+    'fullName': 'Nguyễn Văn An',
     'phone': '0987654321',
     'points': 112,
     'createdAt': now,
   });
 
   setDoc('customers', 'customer02', {
-    'fullName': 'Le Thi Binh',
+    'fullName': 'Lê Thị Bình',
     'phone': '0977000000',
     'points': 45,
     'createdAt': now,
   });
 
-  setDoc('categories', 'category01', {'name': 'Nuoc uong', 'isActive': true});
+  setDoc('categories', 'category01', {'name': 'Nước uống', 'isActive': true});
 
-  setDoc('categories', 'category02', {'name': 'Mon chinh', 'isActive': true});
+  setDoc('categories', 'category02', {'name': 'Món chính', 'isActive': true});
 
-  setDoc('categories', 'category03', {'name': 'Lau', 'isActive': true});
+  setDoc('categories', 'category03', {'name': 'Lẩu', 'isActive': true});
 
   setDoc('foods', 'food01', {
-    'name': 'Tra sua truyen thong',
+    'name': 'Trà sữa truyền thống',
     'categoryId': 'category01',
-    'description': 'Tra sua vi truyen thong',
+    'description': 'Trà sữa vị truyền thống',
     'imageUrl': 'https://example.com/tra-sua.jpg',
-    'status': 'available',
+    'status': 'Còn bán',
     'minPrice': 25000,
   });
 
   setDoc('foods', 'food02', {
-    'name': 'Com chien hai san',
+    'name': 'Cơm chiên hải sản',
     'categoryId': 'category02',
-    'description': 'Com chien voi tom, muc va rau cu',
+    'description': 'Cơm chiên với tôm, mực và rau củ',
     'imageUrl': 'https://example.com/com-chien.jpg',
-    'status': 'available',
+    'status': 'Còn bán',
     'minPrice': 50000,
   });
 
   setDoc('foods', 'food03', {
-    'name': 'Lau thai',
+    'name': 'Lẩu thái',
     'categoryId': 'category03',
-    'description': 'Lau thai chua cay',
+    'description': 'Lẩu thái chua cay',
     'imageUrl': 'https://example.com/lau-thai.jpg',
-    'status': 'available',
+    'status': 'Còn bán',
     'minPrice': 199000,
   });
 
@@ -171,57 +172,61 @@ Future<void> seedSampleData() async {
 
   setDoc('food_variants', 'variant04', {
     'foodId': 'food02',
-    'name': 'Thuong',
+    'name': 'Thường',
     'price': 50000,
-    'unit': 'Phan',
+    'unit': 'Phần',
     'isActive': true,
   });
 
   setDoc('food_variants', 'variant05', {
     'foodId': 'food02',
-    'name': 'Lon',
+    'name': 'Lớn',
     'price': 65000,
-    'unit': 'Phan',
+    'unit': 'Phần',
     'isActive': true,
   });
 
   setDoc('food_variants', 'variant06', {
     'foodId': 'food03',
-    'name': 'Nho',
+    'name': 'Nhỏ',
     'price': 199000,
-    'unit': 'Noi',
+    'unit': 'Nồi',
     'isActive': true,
   });
 
   setDoc('food_variants', 'variant07', {
     'foodId': 'food03',
-    'name': 'Lon',
+    'name': 'Lớn',
     'price': 299000,
-    'unit': 'Noi',
+    'unit': 'Nồi',
     'isActive': true,
   });
 
   setDoc('tables', 'table01', {
-    'name': 'Ban 01',
-    'status': 'serving',
+    'name': 'Bàn 01',
+    'status': 'Đang phục vụ',
     'currentOrderId': 'order01',
+    'mergedWith': <String>[],
   });
 
   setDoc('tables', 'table02', {
-    'name': 'Ban 02',
-    'status': 'empty',
+    'name': 'Bàn 02',
+    'status': 'Trống',
     'currentOrderId': null,
+    'mergedWith': <String>[],
   });
 
   setDoc('tables', 'table03', {
-    'name': 'Ban 03',
-    'status': 'reserved',
+    'name': 'Bàn 03',
+    'status': 'Đã đặt',
     'currentOrderId': null,
+    'mergedWith': <String>[],
   });
 
   setDoc('orders', 'order01', {
     'tableId': 'table01',
-    'status': 'open',
+    'tableIds': ['table01'],
+    'status': 'Đang mở',
     'subtotal': 424000,
     'createdBy': 'user02',
     'createdAt': now,
@@ -229,7 +234,8 @@ Future<void> seedSampleData() async {
 
   setDoc('orders', 'order02', {
     'tableId': 'table02',
-    'status': 'paid',
+    'tableIds': ['table02'],
+    'status': 'Đã thanh toán',
     'subtotal': 125000,
     'createdBy': 'user02',
     'createdAt': now,
@@ -239,72 +245,78 @@ Future<void> seedSampleData() async {
     'orderId': 'order01',
     'foodId': 'food01',
     'variantId': 'variant02',
-    'foodName': 'Tra sua truyen thong',
+    'foodName': 'Trà sữa truyền thống',
     'variantName': 'Size M',
     'unitPrice': 30000,
     'quantity': 2,
-    'note': 'It da',
+    'note': 'Ít đá',
     'lineTotal': 60000,
+    'status': 'Đã xác nhận',
   });
 
   setDoc('order_details', 'detail02', {
     'orderId': 'order01',
     'foodId': 'food02',
     'variantId': 'variant05',
-    'foodName': 'Com chien hai san',
-    'variantName': 'Lon',
+    'foodName': 'Cơm chiên hải sản',
+    'variantName': 'Lớn',
     'unitPrice': 65000,
     'quantity': 1,
-    'note': 'Khong hanh',
+    'note': 'Không hành',
     'lineTotal': 65000,
+    'status': 'Đã xác nhận',
   });
 
   setDoc('order_details', 'detail03', {
     'orderId': 'order01',
     'foodId': 'food03',
     'variantId': 'variant07',
-    'foodName': 'Lau thai',
-    'variantName': 'Lon',
+    'foodName': 'Lẩu thái',
+    'variantName': 'Lớn',
     'unitPrice': 299000,
     'quantity': 1,
-    'note': 'It cay',
+    'note': 'Ít cay',
     'lineTotal': 299000,
+    'status': 'Đã xác nhận',
   });
 
   setDoc('order_details', 'detail04', {
     'orderId': 'order02',
     'foodId': 'food01',
     'variantId': 'variant03',
-    'foodName': 'Tra sua truyen thong',
+    'foodName': 'Trà sữa truyền thống',
     'variantName': 'Size L',
     'unitPrice': 35000,
     'quantity': 1,
-    'note': 'Khong da',
+    'note': 'Không đá',
     'lineTotal': 35000,
+    'status': 'Đã xác nhận',
   });
 
   setDoc('order_details', 'detail05', {
     'orderId': 'order02',
     'foodId': 'food02',
     'variantId': 'variant04',
-    'foodName': 'Com chien hai san',
-    'variantName': 'Thuong',
+    'foodName': 'Cơm chiên hải sản',
+    'variantName': 'Thường',
     'unitPrice': 50000,
     'quantity': 1,
     'note': '',
     'lineTotal': 50000,
+    'status': 'Đã xác nhận',
   });
 
   setDoc('order_details', 'detail06', {
     'orderId': 'order02',
     'foodId': 'food01',
     'variantId': 'variant02',
-    'foodName': 'Tra sua truyen thong',
+    'foodName': 'Trà sữa truyền thống',
     'variantName': 'Size M',
     'unitPrice': 30000,
     'quantity': 1,
-    'note': 'It duong',
+    'note': 'Ít đường',
     'lineTotal': 30000,
+    'status': 'Đã xác nhận',
   });
 
   setDoc('invoices', 'invoice01', {
