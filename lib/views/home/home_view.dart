@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../controllers/theme_controller.dart';
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
+import '../admin.dart';
 import '../invoices/invoice_list_view.dart';
 import '../staff/staff_tables_view.dart';
 
@@ -80,37 +81,65 @@ class AdminDashboardView extends StatelessWidget {
                 icon: Icons.restaurant_menu,
                 title: 'Món ăn',
                 subtitle: 'Thêm, sửa, trạng thái món',
-                onTap: () {},
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const FoodAdminPage()),
+                ),
               ),
               _ActionData(
                 icon: Icons.category_outlined,
                 title: 'Danh mục',
                 subtitle: 'Món chính, nước uống, lẩu',
-                onTap: () {},
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const FoodAdminPage()),
+                ),
               ),
               _ActionData(
                 icon: Icons.table_bar,
                 title: 'Bàn ăn',
                 subtitle: 'Sơ đồ và trạng thái bàn',
-                onTap: () {},
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const TableAdminPage()),
+                ),
               ),
               _ActionData(
                 icon: Icons.badge_outlined,
                 title: 'Nhân viên',
                 subtitle: 'Tài khoản và phân quyền',
-                onTap: () {},
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const EmployeeAdminPage()),
+                ),
               ),
               _ActionData(
                 icon: Icons.payments_outlined,
                 title: 'Hóa đơn',
                 subtitle: 'Tra cứu hóa đơn đã thanh toán',
-                onTap: () => _openInvoices(context),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const InvoiceListView()),
+                ),
               ),
               _ActionData(
                 icon: Icons.bar_chart,
                 title: 'Thống kê',
                 subtitle: 'Doanh thu và món bán chạy',
-                onTap: () {},
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const InvoiceListView()),
+                ),
+              ),
+              _ActionData(
+                icon: Icons.groups_outlined,
+                title: 'Thành viên',
+                subtitle: 'Danh sách, điểm thưởng, khóa/mở',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const MemberAdminPage()),
+                ),
+              ),
+              _ActionData(
+                icon: Icons.local_offer_outlined,
+                title: 'Ưu đãi',
+                subtitle: 'Quản lý chương trình khuyến mãi',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const PromotionAdminPage()),
+                ),
               ),
             ],
           ),
