@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../controllers/theme_controller.dart';
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
+import '../admin/foods/food_admin_page.dart';
+import '../admin/statistics/statistics_page.dart';
 import '../admin.dart';
 import '../invoices/invoice_list_view.dart';
 import '../staff/staff_tables_view.dart';
@@ -122,7 +124,7 @@ class AdminDashboardView extends StatelessWidget {
                 title: 'Thống kê',
                 subtitle: 'Doanh thu và món bán chạy',
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const InvoiceListView()),
+                  MaterialPageRoute(builder: (_) => const StatisticsPage()),
                 ),
               ),
               _ActionData(
@@ -271,7 +273,6 @@ class StaffWorkspaceView extends StatelessWidget {
       context,
     ).push(MaterialPageRoute(builder: (_) => StaffTablesView(mode: mode)));
   }
-
 }
 
 class _ThemeToggleButton extends StatelessWidget {

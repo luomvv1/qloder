@@ -19,7 +19,8 @@ class Food {
   final String status;
   final num minPrice;
 
-  bool get isAvailable => status == 'Còn bán' || status == 'available';
+  bool get isAvailable =>
+      status == 'Còn bán' || status == 'CÃ²n bÃ¡n' || status == 'available';
 
   factory Food.fromFirestore(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data();

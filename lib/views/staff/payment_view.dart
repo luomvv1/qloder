@@ -134,49 +134,79 @@ class _PaymentViewState extends State<PaymentView> {
 
   // Mở dialog thêm thành viên mới ngay tại màn hình thanh toán.
   Future<void> _showCreateCustomerDialog() async {
-    final nameController = TextEditingController();
-    final phoneController = TextEditingController(
-      text: _controller.phoneController.text,
-    );
+    final formKey = GlobalKey<FormState>();
+    var fullName = '';
+    var phone = _controller.phoneController.text.trim();
 
     final result = await showDialog<({String fullName, String phone})>(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Thêm thành viên mới'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  labelText: 'Tên khách hàng',
-                  prefixIcon: Icon(Icons.person_outline),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  initialValue: fullName,
+                  autofocus: true,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    labelText: 'Tên khách hàng',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Vui lòng nhập tên khách hàng';
+                    }
+                    return null;
+                  },
+                  onSaved: (value) => fullName = value?.trim() ?? '',
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: 'Số điện thoại',
-                  prefixIcon: Icon(Icons.phone_outlined),
+                const SizedBox(height: 12),
+                TextFormField(
+                  initialValue: phone,
+                  keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.done,
+                  decoration: const InputDecoration(
+                    labelText: 'Số điện thoại',
+                    prefixIcon: Icon(Icons.phone_outlined),
+                  ),
+                  validator: (value) {
+                    final normalized = (value ?? '').replaceAll(
+                      RegExp(r'\s+'),
+                      '',
+                    );
+                    if (!RegExp(r'^\d{10}$').hasMatch(normalized)) {
+                      return 'Số điện thoại phải đủ 10 chữ số';
+                    }
+                    return null;
+                  },
+                  onSaved: (value) =>
+                      phone = (value ?? '').replaceAll(RegExp(r'\s+'), ''),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                FocusManager.instance.primaryFocus?.unfocus();
+                Navigator.of(dialogContext).pop();
+              },
               child: const Text('Hủy'),
             ),
             FilledButton(
               onPressed: () {
-                Navigator.of(context).pop((
-                  fullName: nameController.text,
-                  phone: phoneController.text,
-                ));
+                final form = formKey.currentState;
+                if (form == null || !form.validate()) return;
+                form.save();
+
+                FocusManager.instance.primaryFocus?.unfocus();
+                Navigator.of(
+                  dialogContext,
+                ).pop((fullName: fullName, phone: phone));
               },
               child: const Text('Lưu thành viên'),
             ),
@@ -185,10 +215,10 @@ class _PaymentViewState extends State<PaymentView> {
       },
     );
 
-    nameController.dispose();
-    phoneController.dispose();
-
     if (result == null) return;
+
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    if (!mounted) return;
 
     final created = await _controller.createCustomer(
       fullName: result.fullName,
@@ -198,13 +228,13 @@ class _PaymentViewState extends State<PaymentView> {
 
     if (created) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã thêm và chọn thành viên mới.')),
+        const SnackBar(content: Text('?? th?m v? ch?n th?nh vi?n m?i.')),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            _controller.errorMessage ?? 'Không thể thêm thành viên.',
+            _controller.errorMessage ?? 'Kh?ng th? th?m th?nh vi?n.',
           ),
         ),
       );

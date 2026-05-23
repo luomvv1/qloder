@@ -350,6 +350,40 @@ class _SmallActionChip extends StatelessWidget {
   }
 }
 
+class _InfoPill extends StatelessWidget {
+  const _InfoPill({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: colorScheme.primaryContainer.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: colorScheme.primary),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: colorScheme.onPrimaryContainer,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // Form thêm món đã chọn vào order: số lượng, ghi chú và nút thêm.
 class _AddItemPanel extends StatelessWidget {
   const _AddItemPanel({
@@ -374,16 +408,27 @@ class _AddItemPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
-                const Icon(Icons.add_shopping_cart),
-                const SizedBox(width: 8),
+                CircleAvatar(
+                  backgroundColor: colorScheme.primaryContainer,
+                  foregroundColor: colorScheme.primary,
+                  child: const Icon(Icons.add_shopping_cart),
+                ),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'Thêm món mới',
@@ -399,13 +444,48 @@ class _AddItemPanel extends StatelessWidget {
                 ),
               ],
             ),
-            Text(
-              food.name,
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 4),
-            Text('${variant.name} - ${formatMoney(variant.price)}'),
             const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: SizedBox(
+                    width: 84,
+                    height: 84,
+                    child: _FoodImage(imageUrl: food.imageUrl, height: 84),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        food.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _InfoPill(icon: Icons.tune, label: variant.name),
+                          _InfoPill(
+                            icon: Icons.payments_outlined,
+                            label: formatMoney(variant.price),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
             TextField(
               controller: quantityController,
               keyboardType: TextInputType.number,
@@ -417,6 +497,8 @@ class _AddItemPanel extends StatelessWidget {
             const SizedBox(height: 12),
             TextField(
               controller: noteController,
+              minLines: 1,
+              maxLines: 3,
               decoration: const InputDecoration(
                 labelText: 'Ghi chú',
                 hintText: 'Ví dụ: ít cay, không đá, không hành',
@@ -435,6 +517,9 @@ class _AddItemPanel extends StatelessWidget {
             ],
             const SizedBox(height: 14),
             FilledButton.icon(
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(52),
+              ),
               onPressed: isAdding ? null : onAdd,
               icon: isAdding
                   ? const SizedBox.square(
@@ -490,15 +575,33 @@ class _MenuPanel extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: controller.searchController,
-              decoration: const InputDecoration(
-                labelText: 'Tìm món',
-                prefixIcon: Icon(Icons.search),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: controller.searchController,
+                    decoration: const InputDecoration(
+                      labelText: 'Tìm món',
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _CategoryFilter(categories: categories, controller: controller),
+              ],
             ),
-            const SizedBox(height: 12),
-            _CategoryFilter(categories: categories, controller: controller),
+            if (controller.selectedCategoryId != 'all') ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Chip(
+                  avatar: const Icon(Icons.category_outlined, size: 18),
+                  label: Text(_selectedCategoryName(categories, controller)),
+                  onDeleted: () => controller.selectCategory('all'),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             if (isLoading)
               const Center(
@@ -532,25 +635,114 @@ class _CategoryFilter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          ChoiceChip(
-            label: const Text('Tất cả'),
-            selected: controller.selectedCategoryId == 'all',
-            onSelected: (_) => controller.selectCategory('all'),
-          ),
-          const SizedBox(width: 8),
-          for (final category in categories) ...[
-            ChoiceChip(
-              label: Text(category.name),
-              selected: controller.selectedCategoryId == category.id,
-              onSelected: (_) => controller.selectCategory(category.id),
+    return Tooltip(
+      message: 'Lọc danh mục',
+      child: SizedBox(
+        width: 54,
+        height: 56,
+        child: OutlinedButton(
+          onPressed: () => _showCategorySheet(context),
+          style: OutlinedButton.styleFrom(
+            padding: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
             ),
-            const SizedBox(width: 8),
-          ],
-        ],
+          ),
+          child: const Icon(Icons.menu),
+        ),
+      ),
+    );
+  }
+
+  void _showCategorySheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            children: [
+              Text(
+                'Chọn danh mục',
+                style: Theme.of(
+                  sheetContext,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 8),
+              _CategoryOptionTile(
+                title: 'Tất cả món',
+                selected: controller.selectedCategoryId == 'all',
+                onTap: () {
+                  controller.selectCategory('all');
+                  Navigator.of(sheetContext).pop();
+                },
+              ),
+              for (final category in categories)
+                _CategoryOptionTile(
+                  title: category.name,
+                  selected: controller.selectedCategoryId == category.id,
+                  onTap: () {
+                    controller.selectCategory(category.id);
+                    Navigator.of(sheetContext).pop();
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+String _selectedCategoryName(
+  List<FoodCategory> categories,
+  OrderItemsController controller,
+) {
+  if (controller.selectedCategoryId == 'all') return 'Tất cả';
+  for (final category in categories) {
+    if (category.id == controller.selectedCategoryId) return category.name;
+  }
+  return 'Tất cả';
+}
+
+class _CategoryOptionTile extends StatelessWidget {
+  const _CategoryOptionTile({
+    required this.title,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String title;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Material(
+        color: selected
+            ? colorScheme.primaryContainer
+            : colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(8),
+        child: ListTile(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          leading: Icon(
+            selected ? Icons.radio_button_checked : Icons.radio_button_off,
+            color: selected ? colorScheme.primary : null,
+          ),
+          title: Text(
+            title,
+            style: TextStyle(
+              fontWeight: selected ? FontWeight.w900 : FontWeight.w600,
+            ),
+          ),
+          onTap: onTap,
+        ),
       ),
     );
   }
@@ -628,19 +820,32 @@ class _FoodImage extends StatelessWidget {
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
-      child: Image.network(
-        trimmedUrl,
-        height: height,
-        width: double.infinity,
-        fit: BoxFit.cover,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
+      child: ColoredBox(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        child: trimmedUrl.startsWith('lib/images/')
+            ? Image.asset(
+                trimmedUrl,
+                height: height,
+                width: double.infinity,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return _FoodImageFallback(height: height);
+                },
+              )
+            : Image.network(
+                trimmedUrl,
+                height: height,
+                width: double.infinity,
+                fit: BoxFit.contain,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
 
-          return _FoodImageLoading(height: height);
-        },
-        errorBuilder: (context, error, stackTrace) {
-          return _FoodImageFallback(height: height);
-        },
+                  return _FoodImageLoading(height: height);
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  return _FoodImageFallback(height: height);
+                },
+              ),
       ),
     );
   }

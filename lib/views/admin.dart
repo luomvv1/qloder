@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../firebase_options.dart';
 import '../../models/app_user.dart';
 import '../../services/auth_service.dart';
+import 'admin/foods/food_admin_page.dart';
 import 'invoices/invoice_list_view.dart';
 
 class AdminView extends StatelessWidget {
@@ -130,8 +131,7 @@ class AdminView extends StatelessWidget {
           ),
           _FeatureCard(
             title: 'Quản lý hóa đơn',
-            subtitle:
-                'Xem hóa đơn, thống kê doanh thu, lịch sử order',
+            subtitle: 'Xem hóa đơn, thống kê doanh thu, lịch sử order',
             icon: Icons.receipt_long,
             onTap: () => Navigator.of(
               context,
@@ -147,8 +147,7 @@ class AdminView extends StatelessWidget {
           ),
           _FeatureCard(
             title: 'Quản lý ưu đãi',
-            subtitle:
-                'Tạo/sửa/xóa chương trình ưu đãi theo thời gian',
+            subtitle: 'Tạo/sửa/xóa chương trình ưu đãi theo thời gian',
             icon: Icons.local_offer_outlined,
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const PromotionAdminPage()),
@@ -233,11 +232,33 @@ class _FeatureCard extends StatelessWidget {
   }
 }
 
-class EmployeeAdminPage extends StatelessWidget {
+class EmployeeAdminPage extends StatefulWidget {
   const EmployeeAdminPage({super.key});
+
+  @override
+  State<EmployeeAdminPage> createState() => _EmployeeAdminPageState();
+}
+
+class _EmployeeAdminPageState extends State<EmployeeAdminPage> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchText = '';
 
   CollectionReference<Map<String, dynamic>> get _users =>
       FirebaseFirestore.instance.collection('users');
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() => _searchText = _searchController.text.trim().toLowerCase());
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   Future<String> _createAuthUserForStaff({
     required String email,
@@ -270,6 +291,7 @@ class EmployeeAdminPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(title: const Text('Quản lý nhân viên')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showEmployeeForm(context),
@@ -277,67 +299,192 @@ class EmployeeAdminPage extends StatelessWidget {
         label: const Text('Thêm nhân viên'),
       ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: _users.orderBy('fullName').snapshots(),
+        stream: _users.snapshots(),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return _AdminEmptyState(
+              icon: Icons.error_outline,
+              message: 'Không tải được danh sách nhân viên.\n${snapshot.error}',
+            );
+          }
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-          final docs = snapshot.data!.docs;
-          if (docs.isEmpty) {
-            return const Center(child: Text('Chưa có nhân viên'));
+          final snapshotData = snapshot.data;
+          if (snapshotData == null) {
+            return const Center(child: CircularProgressIndicator());
           }
-          return ListView.builder(
-            itemCount: docs.length,
-            itemBuilder: (_, index) {
-              final doc = docs[index];
-              final data = doc.data();
-              final name = data['fullName'] as String? ?? doc.id;
-              final email = data['email'] as String? ?? '';
-              final role =
-                  data['position'] as String? ??
-                  data['role'] as String? ??
-                  'phuc-vu';
-              final isActive = data['isActive'] as bool? ?? true;
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                child: ListTile(
-                  title: Text(name),
-                  subtitle: Text('$email\nVai tro: $role'),
-                  isThreeLine: true,
-                  trailing: PopupMenuButton<String>(
-                    onSelected: (value) async {
-                      if (value == 'edit') {
-                        _showEmployeeForm(context, doc: doc);
-                      } else if (value == 'toggle') {
-                        await doc.reference.update({'isActive': !isActive});
-                      } else if (value == 'delete') {
-                        await doc.reference.delete();
-                      }
-                    },
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Text('Sửa thông tin'),
-                      ),
-                      PopupMenuItem(
-                        value: 'toggle',
-                        child: Text(
-                          isActive ? 'Khóa tài khoản' : 'Mở tài khoản',
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Text('Xóa tài khoản'),
-                      ),
-                    ],
-                  ),
+          final allDocs = [...snapshotData.docs]
+            ..sort((a, b) {
+              final nameA = a.data()['fullName'] as String? ?? a.id;
+              final nameB = b.data()['fullName'] as String? ?? b.id;
+              return nameA.compareTo(nameB);
+            });
+          final docs = allDocs.where(_matchesEmployeeSearch).toList();
+          final activeCount = allDocs
+              .where((doc) => doc.data()['isActive'] as bool? ?? true)
+              .length;
+
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                child: _EmployeeSummaryCard(
+                  total: allDocs.length,
+                  active: activeCount,
+                  locked: allDocs.length - activeCount,
+                  onAdd: () => _showEmployeeForm(context),
                 ),
-              );
-            },
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                child: _EmployeeSearchBar(controller: _searchController),
+              ),
+              Expanded(
+                child: allDocs.isEmpty
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: _AdminEmptyState(
+                          icon: Icons.badge_outlined,
+                          message: 'Chưa có nhân viên',
+                        ),
+                      )
+                    : docs.isEmpty
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: _AdminEmptyState(
+                          icon: Icons.search_off,
+                          message: 'Không tìm thấy nhân viên phù hợp',
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 96),
+                        itemCount: docs.length,
+                        itemBuilder: (context, index) =>
+                            _employeeCard(context, docs[index]),
+                      ),
+              ),
+            ],
           );
         },
       ),
     );
+  }
+
+  bool _matchesEmployeeSearch(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data();
+    final query = _searchText;
+    if (query.isEmpty) return true;
+
+    final name = (data['fullName'] as String? ?? doc.id).toLowerCase();
+    final email = (data['email'] as String? ?? '').toLowerCase();
+    final phone = (data['phone'] as String? ?? '').toLowerCase();
+    final role = _employeeRoleLabel(
+      data['position'] as String? ?? data['role'] as String? ?? '',
+    ).toLowerCase();
+
+    return name.contains(query) ||
+        email.contains(query) ||
+        phone.contains(query) ||
+        role.contains(query) ||
+        doc.id.toLowerCase().contains(query);
+  }
+
+  Widget _employeeCard(
+    BuildContext context,
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data();
+    final name = data['fullName'] as String? ?? doc.id;
+    final email = data['email'] as String? ?? '';
+    final phone = data['phone'] as String? ?? '';
+    final role = data['position'] as String? ?? data['role'] as String? ?? '';
+    final roleLabel = _employeeRoleLabel(role);
+    final isActive = data['isActive'] as bool? ?? true;
+    final safeName = name.trim().isEmpty ? doc.id : name.trim();
+    final initial = safeName.substring(0, 1).toUpperCase();
+
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+        leading: CircleAvatar(
+          backgroundColor: const Color(0xFFCCFBF1),
+          foregroundColor: const Color(0xFF0F766E),
+          child: Text(
+            initial,
+            style: const TextStyle(fontWeight: FontWeight.w900),
+          ),
+        ),
+        title: Text(
+          safeName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontWeight: FontWeight.w900),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Text(
+            '$roleLabel • ${isActive ? 'Hoạt động' : 'Đã khóa'}\n'
+            '${email.isEmpty ? '-' : email}\n'
+            '${phone.isEmpty ? '-' : phone}',
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        isThreeLine: true,
+        trailing: PopupMenuButton<String>(
+          onSelected: (value) async {
+            if (value == 'edit') {
+              _showEmployeeForm(context, doc: doc);
+            } else if (value == 'toggle') {
+              await doc.reference.update({'isActive': !isActive});
+            } else if (value == 'delete') {
+              await doc.reference.delete();
+            }
+          },
+          itemBuilder: (_) => [
+            const PopupMenuItem(value: 'edit', child: Text('Sửa thông tin')),
+            PopupMenuItem(
+              value: 'toggle',
+              child: Text(isActive ? 'Khóa tài khoản' : 'Mở tài khoản'),
+            ),
+            const PopupMenuItem(value: 'delete', child: Text('Xóa tài khoản')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _employeeRoleLabel(String role) {
+    switch (role) {
+      case 'admin':
+        return 'Quản lý';
+      case 'bep':
+        return 'Bếp';
+      case 'phuc-vu':
+      case 'staff':
+        return 'Phục vụ';
+      default:
+        return role.isEmpty ? 'Nhân viên' : role;
+    }
+  }
+
+  Color _employeeRoleColor(String role) {
+    switch (role) {
+      case 'admin':
+        return const Color(0xFF7C3AED);
+      case 'bep':
+        return const Color(0xFFC2410C);
+      default:
+        return const Color(0xFF0F766E);
+    }
   }
 
   Future<void> _showEmployeeForm(
@@ -361,49 +508,92 @@ class EmployeeAdminPage extends StatelessWidget {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setState) => AlertDialog(
-            title: Text(
-              doc == null ? 'Thêm nhân viên' : 'Sửa nhân viên',
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
             ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: fullName,
-                    decoration: _adminFieldDecoration('Họ tên'),
+            titlePadding: const EdgeInsets.fromLTRB(20, 18, 12, 0),
+            contentPadding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+            title: Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: const Color(0xFFCCFBF1),
+                  foregroundColor: const Color(0xFF0F766E),
+                  child: Icon(doc == null ? Icons.person_add_alt : Icons.edit),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    doc == null ? 'Thêm nhân viên' : 'Sửa nhân viên',
+                    style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
-                  TextField(
-                    controller: email,
-                    decoration: _adminFieldDecoration('Email'),
-                  ),
-                  TextField(
-                    controller: phone,
-                    decoration: _adminFieldDecoration('Số điện thoại'),
-                  ),
-                  TextField(
-                    controller: password,
-                    obscureText: true,
-                    decoration: _adminFieldDecoration(
-                      doc == null
-                          ? 'Mật khẩu'
-                          : 'Mật khẩu mới (để trống nếu không đổi)',
+                ),
+                IconButton(
+                  tooltip: 'Đóng',
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 420,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: fullName,
+                      textInputAction: TextInputAction.next,
+                      decoration: _adminFieldDecoration(
+                        'Họ tên nhân viên',
+                      ).copyWith(prefixIcon: const Icon(Icons.person_outline)),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: position,
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'phuc-vu',
-                        child: Text('Phục vụ'),
-                      ),
-                      DropdownMenuItem(value: 'bep', child: Text('Bếp')),
-                    ],
-                    onChanged: (value) =>
-                        setState(() => position = value ?? 'phuc-vu'),
-                    decoration: _adminFieldDecoration('Phân quyền'),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: email,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      decoration: _adminFieldDecoration(
+                        'Email đăng nhập',
+                      ).copyWith(prefixIcon: const Icon(Icons.mail_outline)),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: phone,
+                      keyboardType: TextInputType.phone,
+                      textInputAction: TextInputAction.next,
+                      decoration: _adminFieldDecoration(
+                        'Số điện thoại',
+                      ).copyWith(prefixIcon: const Icon(Icons.phone_outlined)),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: password,
+                      obscureText: true,
+                      decoration: _adminFieldDecoration(
+                        doc == null
+                            ? 'Mật khẩu'
+                            : 'Mật khẩu mới (để trống nếu không đổi)',
+                      ).copyWith(prefixIcon: const Icon(Icons.lock_outline)),
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      initialValue: position,
+                      isExpanded: true,
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'phuc-vu',
+                          child: Text('Nhân viên phục vụ'),
+                        ),
+                        DropdownMenuItem(value: 'bep', child: Text('Bếp')),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => position = value ?? 'phuc-vu'),
+                      decoration: _adminFieldDecoration(
+                        'Phân quyền',
+                      ).copyWith(prefixIcon: const Icon(Icons.badge_outlined)),
+                    ),
+                  ],
+                ),
               ),
             ),
             actions: [
@@ -412,6 +602,7 @@ class EmployeeAdminPage extends StatelessWidget {
                 child: const Text('Hủy'),
               ),
               FilledButton(
+                style: FilledButton.styleFrom(minimumSize: const Size(120, 44)),
                 onPressed: () async {
                   final safeName = fullName.text.trim();
                   final safePhone = phone.text.trim();
@@ -457,9 +648,7 @@ class EmployeeAdminPage extends StatelessWidget {
                     if (dialogContext.mounted) {
                       ScaffoldMessenger.of(dialogContext).showSnackBar(
                         const SnackBar(
-                          content: Text(
-                            'Số điện thoại phải đúng 10 chữ số.',
-                          ),
+                          content: Text('Số điện thoại phải đúng 10 chữ số.'),
                         ),
                       );
                     }
@@ -482,9 +671,7 @@ class EmployeeAdminPage extends StatelessWidget {
                     if (dialogContext.mounted) {
                       ScaffoldMessenger.of(dialogContext).showSnackBar(
                         const SnackBar(
-                          content: Text(
-                            'Mật khẩu phải có ít nhất 6 ký tự.',
-                          ),
+                          content: Text('Mật khẩu phải có ít nhất 6 ký tự.'),
                         ),
                       );
                     }
@@ -579,332 +766,235 @@ class EmployeeAdminPage extends StatelessWidget {
   }
 }
 
-class FoodAdminPage extends StatelessWidget {
-  const FoodAdminPage({super.key});
+class _EmployeeSummaryCard extends StatelessWidget {
+  const _EmployeeSummaryCard({
+    required this.total,
+    required this.active,
+    required this.locked,
+    required this.onAdd,
+  });
 
-  CollectionReference<Map<String, dynamic>> get _foods =>
-      FirebaseFirestore.instance.collection('foods');
-  CollectionReference<Map<String, dynamic>> get _categories =>
-      FirebaseFirestore.instance.collection('categories');
+  final int total;
+  final int active;
+  final int locked;
+  final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Quản lý món ăn'),
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Món ăn'),
-              Tab(text: 'Danh mục'),
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F766E),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Nhân viên hệ thống',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 17,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Quản lý tài khoản và trạng thái làm việc',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton.filled(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF0F766E),
+                ),
+                onPressed: onAdd,
+                icon: const Icon(Icons.add),
+              ),
             ],
           ),
-        ),
-        body: TabBarView(children: [_foodTab(context), _categoryTab(context)]),
+          const SizedBox(height: 12),
+          Text(
+            'Tổng: $total    Hoạt động: $active    Đã khóa: $locked',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
       ),
     );
   }
+}
 
-  Widget _foodTab(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton.icon(
-              onPressed: () => _showFoodForm(context),
-              icon: const Icon(Icons.add),
-              label: const Text('Thêm món'),
-            ),
+class _EmployeeSearchBar extends StatelessWidget {
+  const _EmployeeSearchBar({required this.controller});
+
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 48,
+      child: TextField(
+        controller: controller,
+        textInputAction: TextInputAction.search,
+        decoration: InputDecoration(
+          hintText: 'Tìm tên, email, số điện thoại',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: controller.text.trim().isEmpty
+              ? null
+              : IconButton(
+                  tooltip: 'Xóa tìm kiếm',
+                  onPressed: controller.clear,
+                  icon: const Icon(Icons.close),
+                ),
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(999),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(999),
+            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(999),
+            borderSide: const BorderSide(color: Color(0xFF0F766E), width: 1.4),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _EmployeeStatusBadge extends StatelessWidget {
+  const _EmployeeStatusBadge({required this.isActive});
+
+  final bool isActive;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isActive ? const Color(0xFF166534) : const Color(0xFF991B1B);
+    final background = isActive
+        ? const Color(0xFFDCFCE7)
+        : const Color(0xFFFEE2E2);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        isActive ? 'Hoạt động' : 'Đã khóa',
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _EmployeeInfoChip extends StatelessWidget {
+  const _EmployeeInfoChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmployeeContactLine extends StatelessWidget {
+  const _EmployeeContactLine({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: const Color(0xFF64748B)),
+        const SizedBox(width: 6),
         Expanded(
-          child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: _foods.orderBy('name').snapshots(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final docs = snapshot.data!.docs;
-              return ListView.builder(
-                itemCount: docs.length,
-                itemBuilder: (_, index) {
-                  final doc = docs[index];
-                  final data = doc.data();
-                  final name = data['name'] as String? ?? doc.id;
-                  final price = (data['minPrice'] as num? ?? 0).toInt();
-                  final status = data['status'] as String? ?? 'Con ban';
-                  return Card(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    child: ListTile(
-                      title: Text(name),
-                      subtitle: Text(
-                        'Giá: ${_formatVnd(price)} - Trạng thái: $status',
-                      ),
-                      trailing: PopupMenuButton<String>(
-                        onSelected: (value) async {
-                          if (value == 'edit') _showFoodForm(context, doc: doc);
-                          if (value == 'status') {
-                            await doc.reference.update({
-                              'status': status == 'Con ban'
-                                  ? 'Het mon'
-                                  : 'Con ban',
-                            });
-                          }
-                          if (value == 'delete') await doc.reference.delete();
-                        },
-                        itemBuilder: (_) => const [
-                          PopupMenuItem(
-                            value: 'edit',
-                            child: Text('Sửa món ăn'),
-                          ),
-                          PopupMenuItem(
-                            value: 'status',
-                            child: Text('Cập nhật trạng thái'),
-                          ),
-                          PopupMenuItem(
-                            value: 'delete',
-                            child: Text('Xóa món ăn'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
+          child: Text(
+            text.isEmpty ? '-' : text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Color(0xFF475569)),
           ),
         ),
       ],
     );
   }
+}
 
-  Widget _categoryTab(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton.icon(
-              onPressed: () => _showCategoryForm(context),
-              icon: const Icon(Icons.add),
-              label: const Text('Thêm danh mục'),
-            ),
-          ),
-        ),
-        Expanded(
-          child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: _categories.orderBy('name').snapshots(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final docs = snapshot.data!.docs;
-              return ListView.builder(
-                itemCount: docs.length,
-                itemBuilder: (_, index) {
-                  final doc = docs[index];
-                  final data = doc.data();
-                  final name = data['name'] as String? ?? doc.id;
-                  final isActive = data['isActive'] as bool? ?? true;
-                  return Card(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    child: ListTile(
-                      title: Text(name),
-                      subtitle: Text(
-                        isActive ? 'Đang hoạt động' : 'Đang ẩn',
-                      ),
-                      trailing: PopupMenuButton<String>(
-                        onSelected: (value) async {
-                          if (value == 'edit') {
-                            _showCategoryForm(context, doc: doc);
-                          }
-                          if (value == 'toggle') {
-                            await doc.reference.update({'isActive': !isActive});
-                          }
-                          if (value == 'delete') await doc.reference.delete();
-                        },
-                        itemBuilder: (_) => [
-                          const PopupMenuItem(
-                            value: 'edit',
-                            child: Text('Sửa danh mục'),
-                          ),
-                          PopupMenuItem(
-                            value: 'toggle',
-                            child: Text(
-                              isActive ? 'Ẩn danh mục' : 'Mở danh mục',
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Text('Xóa danh mục'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
+class _AdminEmptyState extends StatelessWidget {
+  const _AdminEmptyState({required this.icon, required this.message});
 
-  Future<void> _showFoodForm(
-    BuildContext context, {
-    QueryDocumentSnapshot<Map<String, dynamic>>? doc,
-  }) async {
-    final name = TextEditingController(
-      text: doc?.data()['name'] as String? ?? '',
-    );
-    final price = TextEditingController(
-      text: ((doc?.data()['minPrice'] as num?) ?? 0).toString(),
-    );
-    final desc = TextEditingController(
-      text: doc?.data()['description'] as String? ?? '',
-    );
-    String selectedCategoryId = (doc?.data()['categoryId'] as String?) ?? '';
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: Text(doc == null ? 'Thêm món ăn' : 'Sửa món ăn'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: name,
-                  decoration: _adminFieldDecoration('Tên món'),
-                ),
-                FutureBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                  future: _categories.orderBy('name').get(),
-                  builder: (context, snapshot) {
-                    final docs = snapshot.data?.docs ?? const [];
-                    final validSelected = docs.any(
-                      (e) => e.id == selectedCategoryId,
-                    );
-                    final value = validSelected ? selectedCategoryId : null;
-                    return DropdownButtonFormField<String>(
-                      initialValue: value,
-                      isExpanded: true,
-                      items: docs
-                          .map(
-                            (e) => DropdownMenuItem<String>(
-                              value: e.id,
-                              child: Text(
-                                (e.data()['name'] as String?) ?? e.id,
-                              ),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (v) =>
-                          setState(() => selectedCategoryId = v ?? ''),
-                      decoration: _adminFieldDecoration('Danh mục'),
-                    );
-                  },
-                ),
-                TextField(
-                  controller: price,
-                  decoration: _adminFieldDecoration(
-                    'Giá',
-                  ).copyWith(suffixText: 'VND'),
-                  keyboardType: TextInputType.number,
-                ),
-                TextField(
-                  controller: desc,
-                  decoration: _adminFieldDecoration('Mô tả'),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Hủy'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                if (selectedCategoryId.isEmpty) {
-                  if (dialogContext.mounted) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      const SnackBar(
-                        content: Text('Vui lòng chọn danh mục món ăn.'),
-                      ),
-                    );
-                  }
-                  return;
-                }
-                final payload = <String, dynamic>{
-                  'name': name.text.trim(),
-                  'categoryId': selectedCategoryId,
-                  'minPrice': int.tryParse(price.text.trim()) ?? 0,
-                  'description': desc.text.trim(),
-                  'imageUrl': doc?.data()['imageUrl'] ?? '',
-                  'status': doc?.data()['status'] ?? 'Còn bán',
-                };
-                if (doc == null) {
-                  final foodId = await _nextSequentialDocId(_foods, 'food');
-                  await _foods.doc(foodId).set(payload);
-                } else {
-                  await doc.reference.update(payload);
-                }
-                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-              },
-              child: const Text('Lưu'),
-            ),
-          ],
-        ),
+  final IconData icon;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-    );
-  }
-
-  Future<void> _showCategoryForm(
-    BuildContext context, {
-    QueryDocumentSnapshot<Map<String, dynamic>>? doc,
-  }) async {
-    final name = TextEditingController(
-      text: doc?.data()['name'] as String? ?? '',
-    );
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(doc == null ? 'Thêm danh mục' : 'Sửa danh mục'),
-        content: TextField(
-          controller: name,
-          decoration: _adminFieldDecoration('Tên danh mục'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final payload = {'name': name.text.trim(), 'isActive': true};
-              if (doc == null) {
-                final categoryId = await _nextSequentialDocId(
-                  _categories,
-                  'category',
-                );
-                await _categories.doc(categoryId).set(payload);
-              } else {
-                await doc.reference.update(payload);
-              }
-              if (dialogContext.mounted) Navigator.of(dialogContext).pop();
-            },
-            child: const Text('Lưu'),
+      child: Column(
+        children: [
+          Icon(icon, size: 42, color: const Color(0xFF64748B)),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Color(0xFF64748B)),
           ),
         ],
       ),
@@ -935,6 +1025,7 @@ class _TableAdminPageState extends State<TableAdminPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(title: const Text('Quản lý bàn')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showTableForm(context),
@@ -942,13 +1033,41 @@ class _TableAdminPageState extends State<TableAdminPage> {
         label: const Text('Thêm bàn'),
       ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: _tables.orderBy('name').snapshots(),
+        stream: _tables.snapshots(),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return _AdminEmptyState(
+              icon: Icons.error_outline,
+              message: 'Không tải được danh sách bàn.\n${snapshot.error}',
+            );
+          }
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
+          final snapshotData = snapshot.data;
+          if (snapshotData == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
           final query = _searchText.trim().toLowerCase();
-          final docs = snapshot.data!.docs.where((doc) {
+          final allDocs = [...snapshotData.docs]
+            ..sort((a, b) {
+              final nameA = a.data()['name'] as String? ?? a.id;
+              final nameB = b.data()['name'] as String? ?? b.id;
+              return nameA.compareTo(nameB);
+            });
+          final emptyCount = allDocs.where((doc) {
+            final status = doc.data()['status'] as String? ?? 'Trống';
+            return status == 'Trống' || status == 'empty';
+          }).length;
+          final servingCount = allDocs.where((doc) {
+            final status = doc.data()['status'] as String? ?? '';
+            return status == 'Đang phục vụ' || status == 'serving';
+          }).length;
+          final reservedCount = allDocs.where((doc) {
+            final status = doc.data()['status'] as String? ?? '';
+            return status == 'Đã đặt' || status == 'reserved';
+          }).length;
+          final docs = allDocs.where((doc) {
             final data = doc.data();
             final name = (data['name'] as String? ?? doc.id).toLowerCase();
             final status = (data['status'] as String? ?? '').toLowerCase();
@@ -959,76 +1078,72 @@ class _TableAdminPageState extends State<TableAdminPage> {
           return Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: _adminFieldDecoration('Tìm kiếm bàn').copyWith(
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchText.isEmpty
-                        ? null
-                        : IconButton(
-                            tooltip: 'Xóa tìm kiếm',
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _searchText = '');
-                            },
-                            icon: const Icon(Icons.close),
-                          ),
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                child: _TableSummaryCard(
+                  total: allDocs.length,
+                  empty: emptyCount,
+                  serving: servingCount,
+                  reserved: reservedCount,
+                  onAdd: () => _showTableForm(context),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                child: SizedBox(
+                  height: 48,
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Tìm bàn hoặc trạng thái',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: _searchText.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Xóa tìm kiếm',
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchText = '');
+                              },
+                              icon: const Icon(Icons.close),
+                            ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(999),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(999),
+                        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(999),
+                        borderSide: const BorderSide(
+                          color: Color(0xFF0F766E),
+                          width: 1.4,
+                        ),
+                      ),
+                    ),
+                    onChanged: (value) => setState(() => _searchText = value),
                   ),
-                  onChanged: (value) => setState(() => _searchText = value),
                 ),
               ),
               if (docs.isEmpty)
                 const Expanded(
-                  child: Center(child: Text('Không tìm thấy bàn phù hợp')),
+                  child: Padding(
+                    padding: EdgeInsets.all(12),
+                    child: _AdminEmptyState(
+                      icon: Icons.table_bar,
+                      message: 'Không tìm thấy bàn phù hợp',
+                    ),
+                  ),
                 )
               else
                 Expanded(
                   child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 96),
                     itemCount: docs.length,
-                    itemBuilder: (_, index) {
-                      final doc = docs[index];
-                      final data = doc.data();
-                      final name = data['name'] as String? ?? doc.id;
-                      final status = data['status'] as String? ?? 'Trong';
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        child: ListTile(
-                          title: Text(name),
-                          subtitle: Text('Trạng thái: $status'),
-                          trailing: PopupMenuButton<String>(
-                            onSelected: (value) async {
-                              if (value == 'edit') {
-                                _showTableForm(context, doc: doc);
-                              }
-                              if (value == 'status') {
-                                await _showStatusPicker(context, doc);
-                              }
-                              if (value == 'delete') {
-                                await doc.reference.delete();
-                              }
-                            },
-                            itemBuilder: (_) => const [
-                              PopupMenuItem(
-                                value: 'edit',
-                                child: Text('Sửa bàn'),
-                              ),
-                              PopupMenuItem(
-                                value: 'status',
-                                child: Text('Cập nhật trạng thái'),
-                              ),
-                              PopupMenuItem(
-                                value: 'delete',
-                                child: Text('Xóa bàn'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+                    itemBuilder: (_, index) => _tableCard(context, docs[index]),
                   ),
                 ),
             ],
@@ -1036,6 +1151,98 @@ class _TableAdminPageState extends State<TableAdminPage> {
         },
       ),
     );
+  }
+
+  Widget _tableCard(
+    BuildContext context,
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data();
+    final name = data['name'] as String? ?? doc.id;
+    final status = data['status'] as String? ?? 'Trống';
+    final currentOrderId = data['currentOrderId'] as String?;
+    final mergedWith =
+        (data['mergedWith'] as List<dynamic>?)
+            ?.whereType<String>()
+            .where((id) => id.isNotEmpty)
+            .toList() ??
+        <String>[];
+    final color = _tableStatusColor(status);
+
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+        leading: CircleAvatar(
+          backgroundColor: color.withValues(alpha: 0.12),
+          foregroundColor: color,
+          child: Icon(_tableStatusIcon(status)),
+        ),
+        title: Text(
+          name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontWeight: FontWeight.w900),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            'Trạng thái: $status'
+            '${currentOrderId == null || currentOrderId.isEmpty ? '' : '\nOrder: $currentOrderId'}'
+            '${mergedWith.isEmpty ? '' : '\nGộp với: ${mergedWith.join(', ')}'}',
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        isThreeLine:
+            (currentOrderId != null && currentOrderId.isNotEmpty) ||
+            mergedWith.isNotEmpty,
+        trailing: PopupMenuButton<String>(
+          onSelected: (value) async {
+            if (value == 'edit') {
+              _showTableForm(context, doc: doc);
+            }
+            if (value == 'status') {
+              await _showStatusPicker(context, doc);
+            }
+            if (value == 'delete') {
+              await doc.reference.delete();
+            }
+          },
+          itemBuilder: (_) => const [
+            PopupMenuItem(value: 'edit', child: Text('Sửa bàn')),
+            PopupMenuItem(value: 'status', child: Text('Cập nhật trạng thái')),
+            PopupMenuItem(value: 'delete', child: Text('Xóa bàn')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _tableStatusColor(String status) {
+    if (status == 'Đang phục vụ' || status == 'serving') {
+      return const Color(0xFFC2410C);
+    }
+    if (status == 'Đã đặt' || status == 'reserved') {
+      return const Color(0xFF2563EB);
+    }
+    return const Color(0xFF0F766E);
+  }
+
+  IconData _tableStatusIcon(String status) {
+    if (status == 'Đang phục vụ' || status == 'serving') {
+      return Icons.room_service_outlined;
+    }
+    if (status == 'Đã đặt' || status == 'reserved') {
+      return Icons.event_available_outlined;
+    }
+    return Icons.table_restaurant;
   }
 
   Future<void> _showTableForm(
@@ -1052,29 +1259,74 @@ class _TableAdminPageState extends State<TableAdminPage> {
         var isSaving = false;
         return StatefulBuilder(
           builder: (statefulContext, setState) => AlertDialog(
-            title: Text(doc == null ? 'Thêm bàn' : 'Sửa bàn'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+            titlePadding: const EdgeInsets.fromLTRB(20, 18, 12, 0),
+            contentPadding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+            title: Row(
               children: [
-                TextField(
-                  controller: name,
-                  decoration: _adminFieldDecoration(
-                    doc == null
-                        ? 'Tên bàn (có thể bỏ trống)'
-                        : 'Tên bàn',
+                CircleAvatar(
+                  backgroundColor: const Color(0xFFCCFBF1),
+                  foregroundColor: const Color(0xFF0F766E),
+                  child: Icon(
+                    doc == null ? Icons.add_business_outlined : Icons.edit,
                   ),
                 ),
-                if (doc == null) ...[
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: quantity,
-                    keyboardType: TextInputType.number,
-                    decoration: _adminFieldDecoration(
-                      'Số lượng bàn cần thêm',
-                    ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    doc == null ? 'Thêm bàn' : 'Sửa bàn',
+                    style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
-                ],
+                ),
+                IconButton(
+                  tooltip: 'Đóng',
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  icon: const Icon(Icons.close),
+                ),
               ],
+            ),
+            content: SizedBox(
+              width: 420,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (doc == null)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDFA),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFCCFBF1)),
+                      ),
+                      child: const Text(
+                        'Có thể bỏ trống tên bàn để hệ thống tự tạo: Bàn 01, Bàn 02...',
+                        style: TextStyle(color: Color(0xFF0F766E)),
+                      ),
+                    ),
+                  TextField(
+                    controller: name,
+                    textInputAction: TextInputAction.next,
+                    decoration: _adminFieldDecoration(
+                      doc == null ? 'Tên bàn (có thể bỏ trống)' : 'Tên bàn',
+                    ).copyWith(prefixIcon: const Icon(Icons.table_restaurant)),
+                  ),
+                  if (doc == null) ...[
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: quantity,
+                      keyboardType: TextInputType.number,
+                      decoration: _adminFieldDecoration('Số lượng bàn cần thêm')
+                          .copyWith(
+                            prefixIcon: const Icon(Icons.format_list_numbered),
+                          ),
+                    ),
+                  ],
+                ],
+              ),
             ),
             actions: [
               TextButton(
@@ -1082,6 +1334,7 @@ class _TableAdminPageState extends State<TableAdminPage> {
                 child: const Text('Hủy'),
               ),
               FilledButton(
+                style: FilledButton.styleFrom(minimumSize: const Size(120, 44)),
                 onPressed: isSaving
                     ? null
                     : () async {
@@ -1210,6 +1463,80 @@ class _TableAdminPageState extends State<TableAdminPage> {
               )
               .toList(),
         ),
+      ),
+    );
+  }
+}
+
+class _TableSummaryCard extends StatelessWidget {
+  const _TableSummaryCard({
+    required this.total,
+    required this.empty,
+    required this.serving,
+    required this.reserved,
+    required this.onAdd,
+  });
+
+  final int total;
+  final int empty;
+  final int serving;
+  final int reserved;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F766E),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Sơ đồ bàn ăn',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 17,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Theo dõi trạng thái bàn trong nhà hàng',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton.filled(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF0F766E),
+                ),
+                onPressed: onAdd,
+                icon: const Icon(Icons.add),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Tổng: $total    Trống: $empty    Phục vụ: $serving    Đã đặt: $reserved',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1430,9 +1757,7 @@ class PromotionAdminPage extends StatelessWidget {
           }
           final docs = snapshot.data!.docs;
           if (docs.isEmpty) {
-            return const Center(
-              child: Text('Chưa có chương trình ưu đãi'),
-            );
+            return const Center(child: Text('Chưa có chương trình ưu đãi'));
           }
           return ListView.builder(
             itemCount: docs.length,
@@ -1478,9 +1803,7 @@ class PromotionAdminPage extends StatelessWidget {
                       ),
                       PopupMenuItem(
                         value: 'toggle',
-                        child: Text(
-                          active ? 'Tạm tắt ưu đãi' : 'Bật ưu đãi',
-                        ),
+                        child: Text(active ? 'Tạm tắt ưu đãi' : 'Bật ưu đãi'),
                       ),
                       const PopupMenuItem(
                         value: 'delete',
@@ -1593,10 +1916,9 @@ class PromotionAdminPage extends StatelessWidget {
                 TextField(
                   controller: discountValue,
                   keyboardType: TextInputType.number,
-                  decoration: _adminFieldDecoration('Giá trị giảm')
-                      .copyWith(
-                        suffixText: discountType == 'percent' ? '%' : 'VND',
-                      ),
+                  decoration: _adminFieldDecoration('Giá trị giảm').copyWith(
+                    suffixText: discountType == 'percent' ? '%' : 'VND',
+                  ),
                 ),
                 TextField(
                   controller: minOrderAmount,
@@ -1615,9 +1937,7 @@ class PromotionAdminPage extends StatelessWidget {
                 TextField(
                   controller: usageLimit,
                   keyboardType: TextInputType.number,
-                  decoration: _adminFieldDecoration(
-                    'Giới hạn lượt dùng',
-                  ),
+                  decoration: _adminFieldDecoration('Giới hạn lượt dùng'),
                 ),
                 TextField(
                   controller: usedCount,
